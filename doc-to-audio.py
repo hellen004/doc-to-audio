@@ -5,6 +5,7 @@ import PyPDF2  # PDF extraction
 from docx import Document  # DOCX extraction
 from pydub import AudioSegment  # For audio export (if needed for concatenation)
 import argparse
+import time 
 
 def extract_text_from_file(file_path):
     """Extract text from TXT, PDF, or DOCX files."""
@@ -39,42 +40,65 @@ def extract_text_from_file(file_path):
     else:
         raise ValueError("Unsupported file format. Supported: TXT, PDF, DOCX.")
         
+
 def text_to_audio(text, output_file, use_online=False, lang='en', speed=150):
-    """Convert text to audio and save as MP3."""
+    """Convert text to audio and save as MP3, handling large texts by chunking."""
     # Ensure output ends with .mp3
     if not output_file.endswith('.mp3'):
         output_file += '.mp3'
     
+    # Split text into chunks (by paragraphs)
+    chunks = [chunk.strip() for chunk in text.split('\n\n') if chunk.strip()]
+    if not chunks:
+        raise ValueError("No text chunks to convert.")
+    
+    full_audio = AudioSegment.empty()  # To concatenate segments
+    
     if use_online:
-        # Online: gTTS (requires internet, saves directly as MP3)
-        tts = gTTS(text=text, lang=lang, slow=False)
-        tts.save(output_file)
+        # Online: gTTS (chunk and concatenate)
+        for i, chunk in enumerate(chunks):
+            tts = gTTS(text=chunk, lang=lang, slow=False)
+            temp_mp3 = f"temp_chunk_{i}.mp3"
+            tts.save(temp_mp3)
+            segment = AudioSegment.from_mp3(temp_mp3)
+            full_audio += segment
+            os.remove(temp_mp3)  # Clean up
     else:
-        # Offline: pyttsx3 (saves to temp WAV, then convert to MP3)
+        # Offline: pyttsx3 (chunk and concatenate)
         import tempfile
         engine = pyttsx3.init()
-        engine.setProperty('rate', speed)  # Words per minute
-        engine.setProperty('volume', 1.0)  # Max volume
+        engine.setProperty('rate', speed)
+        engine.setProperty('volume', 1.0)
         voices = engine.getProperty('voices')
-        # Select a voice (e.g., first matching language)
         for voice in voices:
             if lang in voice.languages or 'en' in voice.languages:
                 engine.setProperty('voice', voice.id)
                 break
         
-        # Save to a temporary WAV file
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-            temp_file_path = temp_wav.name
-        engine.save_to_file(text, temp_file_path)
-        engine.runAndWait()
+        for i, chunk in enumerate(chunks):
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
+                temp_file_path = temp_wav.name
+            engine.save_to_file(chunk, temp_file_path)
+            engine.runAndWait()
+            segment = AudioSegment.from_wav(temp_file_path)
+            full_audio += segment
+            
+            # Clean up with retry
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                try:
+                    os.remove(temp_file_path)
+                    break
+                except PermissionError:
+                    if attempt < max_attempts - 1:
+                        time.sleep(0.5)
+                    else:
+                        print(f"Warning: Could not delete temp file {temp_file_path}.")
         
-        # Convert WAV to MP3 using pydub
-        audio = AudioSegment.from_wav(temp_file_path)
-        audio.export(output_file, format='mp3')
-        
-        # Clean up temp WAV
-        os.remove(temp_file_path)
-        
+        engine.stop()
+    
+    # Export final concatenated audio
+    full_audio.export(output_file, format='mp3')       
 
 def main():
     parser = argparse.ArgumentParser(description="Convert documents to audio files.")
