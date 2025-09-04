@@ -7,6 +7,8 @@ A simple Python command-line tool that converts documents (TXT, PDF, DOCX) into 
 - Converts text to speech with customizable speed and language.
 - Saves output as MP3.
 - Handles basic errors like unsupported formats or empty text.
+- Handles large documents by splitting text into chunks and concatenating audio.
+- OCR for scanned/image-based pdfs.
 
 ## Requirements
 - Python 3.10+ (download from python.org).
@@ -26,6 +28,9 @@ pip install pyttsx3 gtts PyPDF2 python-docx pydub
 - macOS: `brew install ffmpeg` (install Homebrew first).
 - Linux: `sudo apt install ffmpeg`.
 
+4. For OCR:
+- Install pytesseract, Tesseract (github.com/UB-Mannheim/tesseract/wiki), pdf2image, and Poppler (https://pdf2image.readthedocs.io/en/latest/installation.html).
+
 ## Usage
 Run the script with:
 python doc_to_audio.py <input_file> [options]
@@ -40,11 +45,6 @@ python doc_to_audio.py <input_file> [options]
 Example:
 python doc_to_audio.py C:\Users\PC\Downloads\example.pdf --output my_audio.mp3 --online --speed 180
 
-
-## Notes
-- For scanned PDFs (images, no selectable text), text extraction may fail. Add OCR (e.g., pytesseract) manually.
-- Offline TTS uses system voices; quality varies by OS.
-- Tested on Windows; should work on macOS/Linux with minor tweaks.
 
 ## License
 MIT License (feel free to use and modify).
