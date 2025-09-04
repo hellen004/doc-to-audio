@@ -26,9 +26,14 @@ def convert():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
-        os.remove(temp_path)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
         if os.path.exists(output_file):
             os.remove(output_file)
+
+@app.route('/')
+def index():
+    return app.send_static_file('upload.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

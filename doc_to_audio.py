@@ -24,21 +24,20 @@ def extract_text_from_file(file_path):
             reader = PyPDF2.PdfReader(f)
             for page in reader.pages:
                 page_text = page.extract_text()
-                if page_text:  # Skip empty pages
+                if page_text:
                     text += page_text + '\n'
-        if not text.strip():  # If no text extracted, use OCR
-        print("No text found with standard extraction. Attempting OCR...")
-        import pytesseract
-        from pdf2image import convert_from_path  # Install if needed: pip install pdf2image
-        # Note: pdf2image requires poppler; download from blog.alivate.com.au/poppler-windows and add to PATH
         
-        images = convert_from_path(file_path)
-        for image in images:
-            text += pytesseract.image_to_string(image, lang='eng') + '\n'  # Change lang as needed
-    
-    if not text.strip():
-        raise ValueError("No text extracted from PDF even with OCR.")
-    return text
+        if not text.strip():  # If no text extracted, use OCR
+            print("No text found with standard extraction. Attempting OCR...")
+            import pytesseract
+            from pdf2image import convert_from_path
+            images = convert_from_path(file_path)
+            for image in images:
+                text += pytesseract.image_to_string(image, lang='eng') + '\n'
+        
+        if not text.strip():
+            raise ValueError("No text extracted from PDF even with OCR.")
+        return text
     
     elif ext == '.docx':
         doc = Document(file_path)
@@ -49,7 +48,6 @@ def extract_text_from_file(file_path):
     
     else:
         raise ValueError("Unsupported file format. Supported: TXT, PDF, DOCX.")
-        
 
 def text_to_audio(text, output_file, use_online=False, lang='en', speed=150):
     """Convert text to audio and save as MP3, handling large texts by chunking."""
@@ -69,10 +67,16 @@ def text_to_audio(text, output_file, use_online=False, lang='en', speed=150):
         for i, chunk in enumerate(chunks):
             tts = gTTS(text=chunk, lang=lang, slow=False)
             temp_mp3 = f"temp_chunk_{i}.mp3"
-            tts.save(temp_mp3)
-            segment = AudioSegment.from_mp3(temp_mp3)
-            full_audio += segment
-            os.remove(temp_mp3)  # Clean up
+            try:
+                tts.save(temp_mp3)
+                segment = AudioSegment.from_mp3(temp_mp3)
+                full_audio += segment
+            finally:
+                if os.path.exists(temp_mp3):
+                    try:
+                        os.remove(temp_mp3)
+                    except Exception as e:
+                        print(f"Warning: Could not delete temp file {temp_mp3}: {e}")
     else:
         # Offline: pyttsx3 (chunk and concatenate)
         import tempfile
@@ -84,27 +88,31 @@ def text_to_audio(text, output_file, use_online=False, lang='en', speed=150):
             if lang in voice.languages or 'en' in voice.languages:
                 engine.setProperty('voice', voice.id)
                 break
-        
         for i, chunk in enumerate(chunks):
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-                temp_file_path = temp_wav.name
-            engine.save_to_file(chunk, temp_file_path)
-            engine.runAndWait()
-            segment = AudioSegment.from_wav(temp_file_path)
-            full_audio += segment
-            
-            # Clean up with retry
-            max_attempts = 3
-            for attempt in range(max_attempts):
-                try:
-                    os.remove(temp_file_path)
-                    break
-                except PermissionError:
-                    if attempt < max_attempts - 1:
-                        time.sleep(0.5)
-                    else:
-                        print(f"Warning: Could not delete temp file {temp_file_path}.")
-        
+            import tempfile
+            temp_file_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
+                    temp_file_path = temp_wav.name
+                # temp_wav is closed here, safe to use
+                engine.save_to_file(chunk, temp_file_path)
+                engine.runAndWait()
+                segment = AudioSegment.from_wav(temp_file_path)
+                full_audio += segment
+            finally:
+                if temp_file_path and os.path.exists(temp_file_path):
+                    max_attempts = 3
+                    for attempt in range(max_attempts):
+                        try:
+                            os.remove(temp_file_path)
+                            break
+                        except PermissionError:
+                            if attempt < max_attempts - 1:
+                                time.sleep(0.5)
+                            else:
+                                print(f"Warning: Could not delete temp file {temp_file_path}.")
+                        except Exception as e:
+                            print(f"Warning: Could not delete temp file {temp_file_path}: {e}")
         engine.stop()
     
     # Export final concatenated audio

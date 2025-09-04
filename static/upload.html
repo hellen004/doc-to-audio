@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document to Audio Converter</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 400px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9; }
+        h2 { text-align: center; }
+        label { display: block; margin-top: 10px; }
+        input[type="submit"] { margin-top: 20px; width: 100%; padding: 10px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Document to Audio Converter</h2>
+        <form action="/convert" method="post" enctype="multipart/form-data">
+            <label>Choose a document:
+                <input type="file" name="file" accept=".txt,.pdf,.docx" required>
+            </label>
+            <label><input type="checkbox" name="online"> Use online TTS</label>
+            <label>Language: <input type="text" name="lang" value="en" required></label>
+            <label>Speed (offline only): <input type="number" name="speed" value="150" min="80" max="300"></label>
+            <input type="submit" value="Convert and Download">
+        </form>
+    </div>
+</body>
+</html>
