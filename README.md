@@ -45,6 +45,15 @@ python doc_to_audio.py <input_file> [options]
 Example:
 python doc_to_audio.py C:\Users\PC\Downloads\example.pdf --output my_audio.mp3 --online --speed 180
 
+## GUI Usage
+Run `streamlit run app.py` for a web-based interface to upload files and download audio.
+
+## Deployement
+Cross-Platform Executable with PyInstaller:
+
+Run: pyinstaller --onefile doc_to_audio.py
+Creates dist\doc_to_audio.exe (run it like the script).
+For GUI: pyinstaller --onefile app.py (but Streamlit executables need extra flags; see docs).
 
 ## License
 MIT License (feel free to use and modify).
